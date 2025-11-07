@@ -3,6 +3,8 @@ packages:
 
 ignoredBuiltDependencies:
   - '@swc/core'
+  - necord
+  - unrs-resolver
 
 onlyBuiltDependencies:
   - '@apollo/protobufjs'

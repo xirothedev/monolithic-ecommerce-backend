@@ -18,7 +18,6 @@ import { CartModule } from './modules/cart/cart.module';
 import { CategoriesModule } from './modules/categories/categories.module';
 import { ChatModule } from './modules/chat/chat.module';
 import { CustomersModule } from './modules/customers/customers.module';
-// import { DiscordModule } from './modules/discord/discord.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { JwtGlobalModule } from './jwt/jwt.module';
 import { OrdersModule } from './modules/orders/orders.module';
