@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CheckoutResponseDataType, WebhookType } from '@payos/node/lib/type';
+import { CreatePaymentLinkResponse, Webhook, PayOS } from '@payos/node';
 import type { Bill, Order, OrderItem, Prisma, PrismaClient, Product } from 'prisma/generated';
 import { PayOSPaymentData } from './payment.interface';
 import { PrismaService } from '@/prisma/prisma.service';
@@ -8,13 +8,10 @@ import { BillStatus } from '@prisma/generated';
 import { PaymentData, WebhookDto } from './dto/webook.dto';
 import { DefaultArgs } from '@prisma/client/runtime/library';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-import PayOS = require('@payos/node');
-
 @Injectable()
 export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
-  private payOS: InstanceType<typeof PayOS>;
+  private payOS: PayOS;
 
   constructor(
     private readonly configService: ConfigService,
@@ -24,7 +21,7 @@ export class PaymentService {
     const apiKey = configService.getOrThrow('PAYOS_API_KEY');
     const checksumKey = configService.getOrThrow('PAYOS_CHECKSUM_KEY');
 
-    this.payOS = new PayOS(clientId, apiKey, checksumKey);
+    this.payOS = new PayOS({ clientId, apiKey, checksumKey });
   }
 
   async handlePaymentWebhook(webhookData: WebhookDto) {
@@ -185,7 +182,7 @@ export class PaymentService {
 
   async createPayment(
     order: Order & { items: (OrderItem & { product: Product })[] },
-  ): Promise<CheckoutResponseDataType> {
+  ): Promise<CreatePaymentLinkResponse> {
     try {
       const orderCode = this.generateOrderCode();
 
@@ -202,7 +199,7 @@ export class PaymentService {
         cancelUrl: `${this.configService.getOrThrow('APPLICATION_BASE_URL')}/payment/failed`,
       };
 
-      return this.payOS.createPaymentLink(paymentData);
+      return await this.payOS.paymentRequests.create(paymentData);
     } catch (error) {
       console.error('Error creating PayOS payment link:', error);
       throw new Error('Cannot create payment link');
@@ -221,7 +218,7 @@ export class PaymentService {
 
   async getPaymentInfo(orderCode: number) {
     try {
-      return await this.payOS.getPaymentLinkInformation(orderCode);
+      return await this.payOS.paymentRequests.get(orderCode);
     } catch (error) {
       console.error('Error getting payment info:', error);
       throw new Error('Cannot get payment info');
@@ -230,16 +227,16 @@ export class PaymentService {
 
   async cancelPaymentLink(orderCode: number) {
     try {
-      return await this.payOS.cancelPaymentLink(orderCode);
+      return await this.payOS.paymentRequests.cancel(orderCode);
     } catch (error) {
       console.error('Error canceling payment link:', error);
       throw new Error('Cannot cancel payment link');
     }
   }
 
-  verifyWebhookData(webhookData: WebhookType): boolean {
+  verifyWebhookData(webhookData: Webhook): boolean {
     try {
-      return !!this.payOS.verifyPaymentWebhookData(webhookData);
+      return !!this.payOS.webhooks.verify(webhookData);
     } catch (error) {
       console.error('Error verifying webhook:', error);
       return false;

@@ -22,6 +22,7 @@ import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { MfaService } from './services/mfa.service';
+import { StringValue } from 'ms';
 
 export const MINIMUM_RETRY_TIME = 60_000;
 export const MAXINUM_AVAILABLE_TIME = 5 * 60 * 1000;
@@ -411,12 +412,12 @@ export class AuthService {
   private generateToken(payload: Payload) {
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.getOrThrow<string>('ACCESS_TOKEN_SECRET_KEY'),
-      expiresIn: this.configService.getOrThrow<string>('ACCESS_TOKEN_TIME_LIFE'),
+      expiresIn: this.configService.getOrThrow<StringValue>('ACCESS_TOKEN_TIME_LIFE'),
     });
 
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET_KEY'),
-      expiresIn: this.configService.getOrThrow<string>('REFRESH_TOKEN_TIME_LIFE'),
+      expiresIn: this.configService.getOrThrow<StringValue>('REFRESH_TOKEN_TIME_LIFE'),
     });
 
     return { accessToken, refreshToken };

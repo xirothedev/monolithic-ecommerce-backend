@@ -11,4 +11,4 @@ export interface PayOSPaymentData {
   cancelUrl: string;
 }
 
-export type { WebhookType as PayOSWebhookData } from '@payos/node/lib/type';
+export type { Webhook as PayOSWebhookData } from '@payos/node';
