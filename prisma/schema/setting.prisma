@@ -1,0 +1,18 @@
+model Setting {
+  userId String @id @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  emailNotifications   Boolean @default(true) @map("email_notifications")
+  browserNotifications Boolean @default(false) @map("browser_notifications")
+
+  ticketNotifications       Boolean @default(true) @map("ticket_notifications")
+  suggestedProducts         Boolean @default(true) @map("suggested_products")
+  promotionNotifications    Boolean @default(false) @map("promotion_notifications")
+  priceChangesNotifications Boolean @default(false) @map("price_changes_notifications")
+  loginNotifications        Boolean @default(false) @map("login_notifications")
+  restockNotifications      Boolean @default(false) @map("restock_notifications")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("setting")
+}

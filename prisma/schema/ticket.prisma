@@ -1,0 +1,106 @@
+model Ticket {
+  id             String          @id @default(uuid()) @db.Uuid
+  numericalOrder Int             @default(autoincrement()) @map("numerical_order") @db.Integer
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  title          String          @db.VarChar(255)
+  description    String          @db.Text
+  status         TicketStatus    @default(OPEN)
+  category       TicketCategory
+  priority       TicketPriority
+  contexts       TicketContext[]
+  attachments    String[]        @db.VarChar(500)
+
+  authorId String          @map("author_id") @db.Uuid
+  author   User            @relation(name: "TicketAuthor", fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignId String?         @map("assign_id") @db.Uuid
+  assign   User?           @relation(name: "TicketAssign", fields: [assignId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  messages TicketMessage[]
+  members  TicketMember[]
+
+  @@map("ticket")
+}
+
+model TicketMember {
+  id         String    @id @default(uuid()) @db.Uuid
+  lastReadAt DateTime?
+
+  ticketId           String          @db.Uuid
+  ticket             Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId             String          @db.Uuid
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadMessageId  String?         @unique @db.Uuid
+  lastReadMessage    TicketMessage?  @relation(fields: [lastReadMessageId], references: [id])
+  ticketMessagesSent TicketMessage[] @relation("TicketMessageSender")
+
+  @@unique([ticketId, userId], name: "ticketUserId", map: "ticket_user_id")
+  @@map("ticket_member")
+}
+
+model TicketMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  content     String?  @db.Text
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  attachments String[]
+
+  ticketUser TicketMember?
+  ticketId   String        @map("ticket_id") @db.Uuid
+  ticket     Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  senderId   String        @map("sender_id") @db.Uuid
+  sender     TicketMember  @relation("TicketMessageSender", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("ticket_message")
+}
+
+model TicketContext {
+  id      String            @id @default(uuid()) @db.Uuid
+  type    TicketContextType
+  labelId String
+  label   String
+
+  ticketId String @db.Uuid
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("ticket_context")
+}
+
+enum TicketStatus {
+  RESOLVED
+  IN_PROGRESS
+  WAITING
+  OPEN
+  CLOSED
+
+  @@map("ticket_status")
+}
+
+enum TicketCategory {
+  TECHNICAL_SUPPORT
+  BILLING_PAYMENT
+  ACCOUNT_ISSUE
+  SERVICE_REQUEST
+  REFUND_REQUEST
+  GENERAL_INQUIRY
+
+  @@map("ticket_category")
+}
+
+enum TicketPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+
+  @@map("ticket_priority")
+}
+
+enum TicketContextType {
+  ORDER
+  PRODUCT
+  TRANSACTION
+  ACCOUNT
+
+  @@map("ticket_context_type")
+}

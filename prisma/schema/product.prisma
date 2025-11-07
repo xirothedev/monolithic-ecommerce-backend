@@ -1,0 +1,108 @@
+model Product {
+  id            String        @id @default(uuid()) @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  sku           String?       @unique @db.VarChar(50)
+  isActive      Boolean       @default(true) @map("is_active")
+  slug          String        @unique @db.VarChar(255)
+  name          String        @db.VarChar(255)
+  description   String        @db.Text
+  stock         Int           @db.SmallInt
+  sold          Int           @default(0) @db.SmallInt
+  flags         ProductFlag[]
+  originalPrice Int           @map("original_price") @db.Integer
+  discountPrice Int           @map("discount_price") @db.Integer
+  tags          String[]      @db.VarChar(100)
+  medias        String[]      @db.VarChar(500)
+  isVerified    Boolean       @default(false) @map("is_verified")
+  service       ServiceType  @default(OTHER)
+
+  categoryId   String        @map("category_id") @db.Uuid
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sellerId     String        @db.Uuid
+  seller       User          @relation(fields: [sellerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cartItem     CartItem[]
+  productItems ProductItem[]
+  orderItem    OrderItem[]
+  reviews      Review[]
+
+  @@map("product")
+}
+
+model ProductItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  data   String    @db.Text
+  isSold Boolean   @default(false) @map("is_sold")
+  soldAt DateTime? @map("sold_at") @db.Timestamptz
+
+  orderItems OrderItem[]
+
+  @@map("product_item")
+}
+
+model Category {
+  id       String    @id @default(uuid()) @db.Uuid
+  name     String    @db.VarChar(100)
+  slug     String    @db.VarChar(100)
+  products Product[]
+
+  @@map("category")
+}
+
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  rating    Decimal  @db.Decimal(2, 1)
+  comment   String   @db.Text
+
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([productId, userId], name: "productUserId", map: "product_user_id")
+  @@map("review")
+}
+
+enum ProductFlag {
+  BEST_CHOICE
+  BEST_SELLER
+  BEST_CHEAP
+  POPULAR
+
+  @@map("product_flag")
+}
+
+enum ServiceType {
+  YOUTUBE
+  NETFLIX
+  SPOTIFY
+  DISNEY_PLUS
+  APPLE_TV
+  AMAZON_PRIME
+  HBO_MAX
+  HULU
+  PARAMOUNT_PLUS
+  CRUNCHYROLL
+  FUNIMATION
+  TWITCH
+  DISCORD_NITRO
+  STEAM
+  XBOX_GAME_PASS
+  PLAYSTATION_PLUS
+  NINTENDO_ONLINE
+  ADOBE_CREATIVE_CLOUD
+  MICROSOFT_365
+  GOOGLE_WORKSPACE
+  NOTION
+  FIGMA
+  CANVA_PRO
+  OTHER
+
+  @@map("service_type")
+}

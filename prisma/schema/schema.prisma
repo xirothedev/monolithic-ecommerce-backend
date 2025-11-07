@@ -1,0 +1,206 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../generated"
+  previewFeatures = ["postgresqlExtensions", "relationJoins"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+  engineType      = "library"
+  relationMode    = "prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              String         @id @default(uuid()) @db.Uuid
+  fullname        String         @db.VarChar(50)
+  email           String         @unique @db.VarChar(255)
+  phone           String?        @unique @db.VarChar(20)
+  web3Wallet      String?        @unique @db.VarChar(255)
+  passwordEnabled Boolean        @default(false) @map("password_enabled")
+  hashedPassword  String?        @map("hashed_password") @db.VarChar(255)
+  avatarUrl       String?        @map("avatar_url") @db.VarChar(500)
+  address         String?        @db.VarChar(500)
+  city            String?        @db.VarChar(50)
+  state           String?        @db.VarChar(50)
+  zipCode         String?        @db.VarChar(10)
+  biography       String?        @db.Text()
+  roles           UserRole[]
+  flags           UserFlag[]
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  credit          Int            @default(0) @db.Integer
+  visible         UserVisibility @default(PUBLIC)
+  isBanned        Boolean        @default(false) @map("is_banned")
+  isLocked        Boolean        @default(false) @map("is_locked")
+  isVerified      Boolean        @default(false) @map("is_verified")
+  lastActiveAt    DateTime?      @map("last_active_at") @db.Timestamptz
+
+  security         UserSecurity?
+  setting          Setting?
+  externalAccounts ExternalAccount[]
+  auth             Authentication[]
+  loginSessions    LoginSession[]
+  products         Product[]
+  cart             CartItem[]
+  ticketAuthor     Ticket[]          @relation("TicketAuthor")
+  ticketAssign     Ticket[]          @relation("TicketAssign")
+  ticketMembers    TicketMember[]
+  reviews          Review[]
+  bills            Bill[]
+  orders           Order[]
+
+  @@map("user")
+}
+
+model UserSecurity {
+  userId                        String    @id @db.Uuid
+  mfaEnabled                    Boolean   @default(false) @map("mfa_enabled")
+  mfaEnabledAt                  DateTime? @map("mfa_enabled_at") @db.Timestamptz
+  mfaDisabledAt                 DateTime? @map("mfa_disabled_at") @db.Timestamptz
+  totpEnabled                   Boolean   @default(false) @map("totp_enabled")
+  totpEnabledAt                 DateTime? @map("totp_enabled_at") @db.Timestamptz
+  totpDisabledAt                DateTime? @map("totp_disabled_at") @db.Timestamptz
+  backupCodesEnabled            Boolean   @default(false) @map("backup_codes_enabled")
+  backupCodesEnabledAt          DateTime? @map("backup_codes_enabled_at") @db.Timestamptz
+  backupCodesDisabledAt         DateTime? @map("backup_codes_disabled_at") @db.Timestamptz
+  verificationAttemptsRemaining Int       @default(0) @db.Integer
+  verificationAttemptsResetAt   DateTime? @map("verification_attempts_reset_at") @db.Timestamptz
+  updatedAt                     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  mfaSetups   MfaSetup[]
+  backupCodes MfaBackupCode[]
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("user_security")
+}
+
+model ExternalAccount {
+  id             String           @id @default(uuid()) @db.Uuid
+  provider       ProviderPlatform @map("provider")
+  providerUserId String           @map("provider_user_id") @db.VarChar(255)
+  approvedScope  String           @map("approved_scope") @db.VarChar(255)
+  emailAddress   String           @map("email_address") @db.VarChar(255)
+  phoneNumber    String?          @map("phone_number") @db.VarChar(255)
+  firstName      String?          @map("first_name") @db.VarChar(255)
+  lastName       String?          @map("last_name") @db.VarChar(255)
+  fullName       String?          @map("full_name") @db.VarChar(255)
+  username       String?          @map("username") @db.VarChar(255)
+  avatarUrl      String?          @map("avatar_url") @db.VarChar(500)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("external_account")
+}
+
+model Bill {
+  id            String        @id @default(uuid()) @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  transactionId String?       @map("transaction_id") @db.VarChar(255)
+  paymentMethod PaymentMethod @map("payment_method")
+  type          BillType
+  status        BillStatus
+  amount        Int           @db.Integer
+  note          String        @db.Text
+
+  order  Order?
+  userId String? @map("user_id") @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("bill")
+}
+
+model CartItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  quantity  Int      @default(1) @db.SmallInt
+
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId    String  @map("user_id") @db.Uuid
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([productId, userId], name: "productUserId")
+  @@map("cart_item")
+}
+
+enum UserRole {
+  ROOT
+  ADMINISTRATOR
+  SUPPORTER
+  COLLABORATOR
+  SELLER
+  USER
+
+  @@map("user_role")
+}
+
+enum UserFlag {
+  BEST_CUSTOMER
+  DIAMOND_CUSTOMER
+  GOLD_CUSTOMER
+  SILVER_CUSTOMER
+  COPPER_CUSTOMER
+  CUSTOMER
+
+  @@map("user_flag")
+}
+
+enum UserVisibility {
+  PUBLIC
+  PRIVATE
+  CONTACT_ONLY
+
+  @@map("user_visibility")
+}
+
+enum ProviderPlatform {
+  GOOGLE
+  DISCORD
+
+  @@map("provider_platform")
+}
+
+enum BillType {
+  MONEY_OUT
+  MONEY_IN
+
+  @@map("bill_type")
+}
+
+enum BillStatus {
+  DONE
+  PENDING
+  REFUNDED
+  CANCELLED
+  FAILED
+
+  @@map("bill_status")
+}
+
+enum PaymentMethod {
+  MOMO
+  VIETQR_PAYOS
+
+  @@map("payment_method")
+}
+
+enum SelectFrom {
+  CART
+  SERVICES
+
+  @@map("select_from")
+}

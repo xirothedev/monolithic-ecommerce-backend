@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>MFA Verification Code</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #f4f4f4;
+      }
+      .container {
+        background-color: #ffffff;
+        padding: 30px;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .logo {
+        font-size: 24px;
+        font-weight: bold;
+        color: #007bff;
+        margin-bottom: 10px;
+      }
+      .title {
+        font-size: 20px;
+        color: #333;
+        margin-bottom: 20px;
+      }
+      .code-container {
+        text-align: center;
+        margin: 30px 0;
+        padding: 20px;
+        background-color: #f8f9fa;
+        border-radius: 8px;
+        border: 2px dashed #007bff;
+      }
+      .code {
+        font-size: 32px;
+        font-weight: bold;
+        color: #007bff;
+        letter-spacing: 4px;
+        font-family: 'Courier New', monospace;
+      }
+      .warning {
+        background-color: #fff3cd;
+        border: 1px solid #ffeaa7;
+        color: #856404;
+        padding: 15px;
+        border-radius: 5px;
+        margin: 20px 0;
+      }
+      .footer {
+        text-align: center;
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
+        color: #666;
+        font-size: 14px;
+      }
+      .info {
+        background-color: #e7f3ff;
+        border-left: 4px solid #007bff;
+        padding: 15px;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="logo">Web Store</div>
+        <div class="title">Multi-Factor Authentication Code</div>
+      </div>
+
+      <p>Hello,</p>
+
+      <p>You have requested a verification code for Multi-Factor Authentication (MFA).</p>
+
+      <div class="code-container">
+        <div>Your verification code is:</div>
+        <div class="code">{{MFA_CODE}}</div>
+      </div>
+
+      <div class="warning">
+        <strong>Important:</strong>
+        <ul>
+          <li>This code will expire in 5 minutes</li>
+          <li>Never share this code with anyone</li>
+          <li>If you didn't request this code, please ignore this email</li>
+        </ul>
+      </div>
+
+      <div class="info">
+        <strong>Security Tip:</strong> For enhanced security, consider using an authenticator app like Google
+        Authenticator or Authy for TOTP-based MFA instead of email codes.
+      </div>
+
+      <p>If you have any questions or concerns, please contact our support team.</p>
+
+      <div class="footer">
+        <p>This is an automated message from Web Store. Please do not reply to this email.</p>
+        <p>&copy; 2024 Web Store. All rights reserved.</p>
+      </div>
+    </div>
+  </body>
+</html>

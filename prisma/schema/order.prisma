@@ -1,0 +1,30 @@
+model Order {
+  id         String   @id @default(uuid()) @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  totalPrice Int      @map("total_price") @db.Integer
+
+  userId String      @db.Uuid
+  user   User        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  billId String      @unique @map("bill_id") @db.Uuid
+  bill   Bill        @relation(fields: [billId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items  OrderItem[]
+
+  @@map("order")
+}
+
+model OrderItem {
+  id       String     @id @default(uuid()) @db.Uuid
+  from     SelectFrom
+  quantity Int        @default(1) @db.SmallInt
+  price    Int        @db.Integer
+
+  productId     String      @map("product_id") @db.Uuid
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  productItemId String?     @map("product_item_id") @db.Uuid
+  productItem   ProductItem? @relation(fields: [productItemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  orderId       String      @map("order_id") @db.Uuid
+  order         Order       @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("order_item")
+}

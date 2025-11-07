@@ -1,0 +1,550 @@
+model Authentication {
+  code       String   @db.Char(6)
+  retryTime  Int      @default(0) @map("retry_time") @db.SmallInt
+  type       AuthType
+  lastSentAt DateTime @map("last_sent_at") @db.Timestamptz
+  expiresAt  DateTime @map("expires_at") @db.Timestamptz
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @db.Uuid
+
+  @@unique([type, userId], name: "id")
+  @@map("authentication")
+}
+
+model MfaSetup {
+  id        String   @id @default(uuid()) @db.Uuid
+  type      MfaType
+  secret    String?  @db.VarChar(255)
+  phone     String?  @db.VarChar(20)
+  email     String?  @db.VarChar(255)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  user   UserSecurity @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+  userId String       @db.Uuid
+
+  @@unique([userId, type], name: "userMfaType", map: "user_mfa_type")
+  @@map("mfa_setup")
+}
+
+model MfaBackupCode {
+  id        String    @id @default(uuid()) @db.Uuid
+  code      String    @db.VarChar(10) // 8-10 character backup code
+  isUsed    Boolean   @default(false) @map("is_used")
+  usedAt    DateTime? @map("used_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  user   UserSecurity @relation(fields: [userId], references: [userId], onDelete: Cascade, onUpdate: Cascade)
+  userId String       @db.Uuid
+
+  @@unique([userId, code], name: "userBackupCode", map: "user_backup_code")
+  @@map("mfa_backup_code")
+}
+
+model LoginSession {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionId    String   @unique @map("session_id") @db.VarChar(255)
+  refreshToken String?  @unique @map("refresh_token") @db.VarChar(512)
+  ipAddress    String?  @map("ip_address") @db.VarChar(45)
+  userAgent    String?  @map("user_agent") @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+  lastUsedAt   DateTime @default(now()) @updatedAt @map("last_used_at") @db.Timestamptz
+
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("login_session")
+}
+
+enum AuthType {
+  VERIFY_EMAIL
+  MFA_EMAIL
+  MFA_SMS
+  MFA_TOTP
+  PASSWORD_RESET
+
+  @@map("auth_type")
+}
+
+enum MfaType {
+  TOTP
+  SMS
+  EMAIL
+
+  @@map("mfa_type")
+}
+
+model Order {
+  id         String   @id @default(uuid()) @db.Uuid
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  totalPrice Int      @map("total_price") @db.Integer
+
+  userId String      @db.Uuid
+  user   User        @relation(fields: [userId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  billId String      @unique @map("bill_id") @db.Uuid
+  bill   Bill        @relation(fields: [billId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  items  OrderItem[]
+
+  @@map("order")
+}
+
+model OrderItem {
+  id       String     @id @default(uuid()) @db.Uuid
+  from     SelectFrom
+  quantity Int        @default(1) @db.SmallInt
+  price    Int        @db.Integer
+
+  productId     String       @map("product_id") @db.Uuid
+  product       Product      @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  productItemId String?      @map("product_item_id") @db.Uuid
+  productItem   ProductItem? @relation(fields: [productItemId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  orderId       String       @map("order_id") @db.Uuid
+  order         Order        @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("order_item")
+}
+
+model Product {
+  id            String        @id @default(uuid()) @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  sku           String?       @unique @db.VarChar(50)
+  isActive      Boolean       @default(true) @map("is_active")
+  slug          String        @unique @db.VarChar(255)
+  name          String        @db.VarChar(255)
+  description   String        @db.Text
+  stock         Int           @db.SmallInt
+  sold          Int           @default(0) @db.SmallInt
+  flags         ProductFlag[]
+  originalPrice Int           @map("original_price") @db.Integer
+  discountPrice Int           @map("discount_price") @db.Integer
+  tags          String[]      @db.VarChar(100)
+  medias        String[]      @db.VarChar(500)
+  isVerified    Boolean       @default(false) @map("is_verified")
+  service       ServiceType   @default(OTHER)
+
+  categoryId   String        @map("category_id") @db.Uuid
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  sellerId     String        @db.Uuid
+  seller       User          @relation(fields: [sellerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  cartItem     CartItem[]
+  productItems ProductItem[]
+  orderItem    OrderItem[]
+  reviews      Review[]
+
+  @@map("product")
+}
+
+model ProductItem {
+  id        String  @id @default(uuid()) @db.Uuid
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  data   String    @db.Text
+  isSold Boolean   @default(false) @map("is_sold")
+  soldAt DateTime? @map("sold_at") @db.Timestamptz
+
+  orderItems OrderItem[]
+
+  @@map("product_item")
+}
+
+model Category {
+  id       String    @id @default(uuid()) @db.Uuid
+  name     String    @db.VarChar(100)
+  slug     String    @db.VarChar(100)
+  products Product[]
+
+  @@map("category")
+}
+
+model Review {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  rating    Decimal  @db.Decimal(2, 1)
+  comment   String   @db.Text
+
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@unique([productId, userId], name: "productUserId", map: "product_user_id")
+  @@map("review")
+}
+
+enum ProductFlag {
+  BEST_CHOICE
+  BEST_SELLER
+  BEST_CHEAP
+  POPULAR
+
+  @@map("product_flag")
+}
+
+enum ServiceType {
+  YOUTUBE
+  NETFLIX
+  SPOTIFY
+  DISNEY_PLUS
+  APPLE_TV
+  AMAZON_PRIME
+  HBO_MAX
+  HULU
+  PARAMOUNT_PLUS
+  CRUNCHYROLL
+  FUNIMATION
+  TWITCH
+  DISCORD_NITRO
+  STEAM
+  XBOX_GAME_PASS
+  PLAYSTATION_PLUS
+  NINTENDO_ONLINE
+  ADOBE_CREATIVE_CLOUD
+  MICROSOFT_365
+  GOOGLE_WORKSPACE
+  NOTION
+  FIGMA
+  CANVA_PRO
+  OTHER
+
+  @@map("service_type")
+}
+
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../generated"
+  previewFeatures = ["postgresqlExtensions", "relationJoins"]
+  binaryTargets   = ["native", "linux-musl-openssl-3.0.x"]
+  engineType      = "library"
+  relationMode    = "prisma"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id              String         @id @default(uuid()) @db.Uuid
+  fullname        String         @db.VarChar(50)
+  email           String         @unique @db.VarChar(255)
+  phone           String?        @unique @db.VarChar(20)
+  web3Wallet      String?        @unique @db.VarChar(255)
+  passwordEnabled Boolean        @default(false) @map("password_enabled")
+  hashedPassword  String?        @map("hashed_password") @db.VarChar(255)
+  avatarUrl       String?        @map("avatar_url") @db.VarChar(500)
+  address         String?        @db.VarChar(500)
+  city            String?        @db.VarChar(50)
+  state           String?        @db.VarChar(50)
+  zipCode         String?        @db.VarChar(10)
+  biography       String?        @db.Text()
+  roles           UserRole[]
+  flags           UserFlag[]
+  createdAt       DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+  credit          Int            @default(0) @db.Integer
+  visible         UserVisibility @default(PUBLIC)
+  isBanned        Boolean        @default(false) @map("is_banned")
+  isLocked        Boolean        @default(false) @map("is_locked")
+  isVerified      Boolean        @default(false) @map("is_verified")
+  lastActiveAt    DateTime?      @map("last_active_at") @db.Timestamptz
+
+  security         UserSecurity?
+  setting          Setting?
+  externalAccounts ExternalAccount[]
+  auth             Authentication[]
+  loginSessions    LoginSession[]
+  products         Product[]
+  cart             CartItem[]
+  ticketAuthor     Ticket[]          @relation("TicketAuthor")
+  ticketAssign     Ticket[]          @relation("TicketAssign")
+  ticketMembers    TicketMember[]
+  reviews          Review[]
+  bills            Bill[]
+  orders           Order[]
+
+  @@map("user")
+}
+
+model UserSecurity {
+  userId                        String    @id @db.Uuid
+  mfaEnabled                    Boolean   @default(false) @map("mfa_enabled")
+  mfaEnabledAt                  DateTime? @map("mfa_enabled_at") @db.Timestamptz
+  mfaDisabledAt                 DateTime? @map("mfa_disabled_at") @db.Timestamptz
+  totpEnabled                   Boolean   @default(false) @map("totp_enabled")
+  totpEnabledAt                 DateTime? @map("totp_enabled_at") @db.Timestamptz
+  totpDisabledAt                DateTime? @map("totp_disabled_at") @db.Timestamptz
+  backupCodesEnabled            Boolean   @default(false) @map("backup_codes_enabled")
+  backupCodesEnabledAt          DateTime? @map("backup_codes_enabled_at") @db.Timestamptz
+  backupCodesDisabledAt         DateTime? @map("backup_codes_disabled_at") @db.Timestamptz
+  verificationAttemptsRemaining Int       @default(0) @db.Integer
+  verificationAttemptsResetAt   DateTime? @map("verification_attempts_reset_at") @db.Timestamptz
+  updatedAt                     DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  mfaSetups   MfaSetup[]
+  backupCodes MfaBackupCode[]
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("user_security")
+}
+
+model ExternalAccount {
+  id             String           @id @default(uuid()) @db.Uuid
+  provider       ProviderPlatform @map("provider")
+  providerUserId String           @map("provider_user_id") @db.VarChar(255)
+  approvedScope  String           @map("approved_scope") @db.VarChar(255)
+  emailAddress   String           @map("email_address") @db.VarChar(255)
+  phoneNumber    String?          @map("phone_number") @db.VarChar(255)
+  firstName      String?          @map("first_name") @db.VarChar(255)
+  lastName       String?          @map("last_name") @db.VarChar(255)
+  fullName       String?          @map("full_name") @db.VarChar(255)
+  username       String?          @map("username") @db.VarChar(255)
+  avatarUrl      String?          @map("avatar_url") @db.VarChar(500)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime         @updatedAt @map("updated_at") @db.Timestamptz
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("external_account")
+}
+
+model Bill {
+  id            String        @id @default(uuid()) @db.Uuid
+  createdAt     DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt     DateTime      @updatedAt @map("updated_at") @db.Timestamptz
+  transactionId String?       @map("transaction_id") @db.VarChar(255)
+  paymentMethod PaymentMethod @map("payment_method")
+  type          BillType
+  status        BillStatus
+  amount        Int           @db.Integer
+  note          String        @db.Text
+
+  order  Order?
+  userId String? @map("user_id") @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("bill")
+}
+
+model CartItem {
+  id        String   @id @default(uuid()) @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  quantity  Int      @default(1) @db.SmallInt
+
+  productId String  @map("product_id") @db.Uuid
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId    String  @map("user_id") @db.Uuid
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([productId, userId], name: "productUserId")
+  @@map("cart_item")
+}
+
+enum UserRole {
+  ROOT
+  ADMINISTRATOR
+  SUPPORTER
+  COLLABORATOR
+  SELLER
+  USER
+
+  @@map("user_role")
+}
+
+enum UserFlag {
+  BEST_CUSTOMER
+  DIAMOND_CUSTOMER
+  GOLD_CUSTOMER
+  SILVER_CUSTOMER
+  COPPER_CUSTOMER
+  CUSTOMER
+
+  @@map("user_flag")
+}
+
+enum UserVisibility {
+  PUBLIC
+  PRIVATE
+  CONTACT_ONLY
+
+  @@map("user_visibility")
+}
+
+enum ProviderPlatform {
+  GOOGLE
+  DISCORD
+
+  @@map("provider_platform")
+}
+
+enum BillType {
+  MONEY_OUT
+  MONEY_IN
+
+  @@map("bill_type")
+}
+
+enum BillStatus {
+  DONE
+  PENDING
+  REFUNDED
+  CANCELLED
+  FAILED
+
+  @@map("bill_status")
+}
+
+enum PaymentMethod {
+  MOMO
+  VIETQR_PAYOS
+
+  @@map("payment_method")
+}
+
+enum SelectFrom {
+  CART
+  SERVICES
+
+  @@map("select_from")
+}
+
+model Setting {
+  userId String @id @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  emailNotifications   Boolean @default(true) @map("email_notifications")
+  browserNotifications Boolean @default(false) @map("browser_notifications")
+
+  ticketNotifications       Boolean @default(true) @map("ticket_notifications")
+  suggestedProducts         Boolean @default(true) @map("suggested_products")
+  promotionNotifications    Boolean @default(false) @map("promotion_notifications")
+  priceChangesNotifications Boolean @default(false) @map("price_changes_notifications")
+  loginNotifications        Boolean @default(false) @map("login_notifications")
+  restockNotifications      Boolean @default(false) @map("restock_notifications")
+
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("setting")
+}
+
+model Ticket {
+  id             String          @id @default(uuid()) @db.Uuid
+  numericalOrder Int             @default(autoincrement()) @map("numerical_order") @db.Integer
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+  title          String          @db.VarChar(255)
+  description    String          @db.Text
+  status         TicketStatus    @default(OPEN)
+  category       TicketCategory
+  priority       TicketPriority
+  contexts       TicketContext[]
+  attachments    String[]        @db.VarChar(500)
+
+  authorId String          @map("author_id") @db.Uuid
+  author   User            @relation(name: "TicketAuthor", fields: [authorId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  assignId String?         @map("assign_id") @db.Uuid
+  assign   User?           @relation(name: "TicketAssign", fields: [assignId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  messages TicketMessage[]
+  members  TicketMember[]
+
+  @@map("ticket")
+}
+
+model TicketMember {
+  id         String    @id @default(uuid()) @db.Uuid
+  lastReadAt DateTime?
+
+  ticketId           String          @db.Uuid
+  ticket             Ticket          @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  userId             String          @db.Uuid
+  user               User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadMessageId  String?         @unique @db.Uuid
+  lastReadMessage    TicketMessage?  @relation(fields: [lastReadMessageId], references: [id])
+  ticketMessagesSent TicketMessage[] @relation("TicketMessageSender")
+
+  @@unique([ticketId, userId], name: "ticketUserId", map: "ticket_user_id")
+  @@map("ticket_member")
+}
+
+model TicketMessage {
+  id          String   @id @default(uuid()) @db.Uuid
+  content     String?  @db.Text
+  isRead      Boolean  @default(false) @map("is_read")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  attachments String[]
+
+  ticketUser TicketMember?
+  ticketId   String        @map("ticket_id") @db.Uuid
+  ticket     Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  senderId   String        @map("sender_id") @db.Uuid
+  sender     TicketMember  @relation("TicketMessageSender", fields: [senderId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("ticket_message")
+}
+
+model TicketContext {
+  id      String            @id @default(uuid()) @db.Uuid
+  type    TicketContextType
+  labelId String
+  label   String
+
+  ticketId String @db.Uuid
+  ticket   Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+  @@map("ticket_context")
+}
+
+enum TicketStatus {
+  RESOLVED
+  IN_PROGRESS
+  WAITING
+  OPEN
+  CLOSED
+
+  @@map("ticket_status")
+}
+
+enum TicketCategory {
+  TECHNICAL_SUPPORT
+  BILLING_PAYMENT
+  ACCOUNT_ISSUE
+  SERVICE_REQUEST
+  REFUND_REQUEST
+  GENERAL_INQUIRY
+
+  @@map("ticket_category")
+}
+
+enum TicketPriority {
+  URGENT
+  HIGH
+  MEDIUM
+  LOW
+
+  @@map("ticket_priority")
+}
+
+enum TicketContextType {
+  ORDER
+  PRODUCT
+  TRANSACTION
+  ACCOUNT
+
+  @@map("ticket_context_type")
+}
