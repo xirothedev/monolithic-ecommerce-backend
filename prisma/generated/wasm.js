@@ -518,7 +518,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/home/xiro/workspace/web-store/backend/prisma/generated",
+      "value": "/home/xiro/workspace/monolithic-ecommerce-backend/prisma/generated",
       "fromEnvVar": null
     },
     "config": {
@@ -540,12 +540,11 @@ const config = {
       "postgresqlExtensions",
       "relationJoins"
     ],
-    "sourceFilePath": "/home/xiro/workspace/web-store/backend/prisma/schema/schema.prisma",
+    "sourceFilePath": "/home/xiro/workspace/monolithic-ecommerce-backend/prisma/schema/schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null,
-    "schemaEnvPath": "../../.env"
+    "rootEnvPath": null
   },
   "relativePath": "../schema",
   "clientVersion": "6.19.0",
